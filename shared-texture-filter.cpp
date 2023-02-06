@@ -6,8 +6,6 @@
 #include <dxgi.h>
 #include <wrl/client.h>
 
-using namespace Microsoft::WRL;
-
 #define OBS_SHARED_TEXTURE_PLUGIN "shared-texture-filter"
 #define OBS_SHARED_TEXTURE_VERSION_MAJOR 0
 #define OBS_SHARED_TEXTURE_VERSION_MINOR 0
@@ -40,7 +38,7 @@ struct shared_texture_filter {
 	uint32_t shared_width;
 	uint32_t shared_height;
 
-	ComPtr<ID3D11DeviceContext> d3d11_contextPtr;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3d11_contextPtr;
 
 	ID3D11Texture2D *d3d11_texture_shared_ptr;
 	ID3D11Texture2D *d3d11_texture_current_ptr;
@@ -109,7 +107,7 @@ static void shared_texture_filter_update_texture_pointers(void *data)
 static void shared_texture_filter_create_d3d11_context(void* data)
 {
 	auto filter = (struct shared_texture_filter *)data;
-	ComPtr<ID3D11Device> d3d11_device = (ID3D11Device *)gs_get_device_obj();
+	Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device = (ID3D11Device *)gs_get_device_obj();
 	d3d11_device->GetImmediateContext(&filter->d3d11_contextPtr);
 	d3d11_device = nullptr;
 }
