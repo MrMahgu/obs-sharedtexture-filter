@@ -156,7 +156,7 @@ static void shared_texture_fitler_render_texture(void *data, obs_source_t *targe
 	buffer_texrender = nullptr;
 }
 
-static void shated_texture_filter_copy_texture_resources(void* data)
+static void shared_texture_filter_copy_texture_resources(void* data)
 {
 	auto filter = (struct shared_texture_filter *)data;
 
@@ -238,7 +238,7 @@ static void shared_texture_filter_render_callback(void *data, uint32_t cx, uint3
 	}
 	
 	shared_texture_fitler_render_texture(filter, target, target_width, target_height);
-	shated_texture_filter_copy_texture_resources(filter);
+	shared_texture_filter_copy_texture_resources(filter);
 		
 	filter->render_swap = !filter->render_swap;
 }
