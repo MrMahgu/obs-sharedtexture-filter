@@ -78,6 +78,6 @@
             "qtVersion": 6
         }
     },
-    "name": "obs-screenshot-filter",
-    "version": "1.4.0"
+    "name": "obs-sharedtexture-filter",
+    "version": "0.0.1"
 }
