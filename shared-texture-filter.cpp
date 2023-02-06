@@ -26,6 +26,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE(OBS_SHARED_TEXTURE_PLUGIN, OBS_SHARED_TEXTURE_LANG
 #define info(format, ...) do_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) do_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
+#define OBS_UI_SETTING_FILTER_NAME "mahgu.sharedtexture.ui.filter_title"
 #define OBS_UI_SETTING_DESC_NAME "mahgu.sharedtexture.ui.name_desc"
 
 struct shared_texture_filter {
@@ -52,7 +53,7 @@ struct shared_texture_filter {
 static const char *shared_texture_filter_get_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);	
-	return obs_module_text(OBS_SHARED_TEXTURE_PLUGIN);
+	return obs_module_text(OBS_UI_SETTING_FILTER_NAME);
 }
 
 static obs_properties_t *shared_texture_filter_properties(void *data)
