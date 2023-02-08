@@ -106,12 +106,7 @@ static void update_shared_handle(void *data)
 
 }
 
-#ifdef DEBUG
-static bool hack_101 = true;
-#endif;
-
-static void render(void *data, obs_source_t *target, uint32_t cx,
-				  uint32_t cy)
+static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
 
