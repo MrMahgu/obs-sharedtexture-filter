@@ -48,66 +48,48 @@ static void initialize_texrenders(void *data, uint32_t width, uint32_t height)
 
 static void update_texrender_pointers(void *data)
 {
-	auto filter = (struct filter *)data;	
+	auto filter = (struct filter *)data;
 
-	filter->d3d11_current_ptr.Reset();	
-	filter->d3d11_current_ptr.Attach((ID3D11Texture2D *)gs_texture_get_obj(
-		gs_texrender_get_texture(filter->texrender_current_ptr)));
+	filter->d3d11_current_ptr = nullptr;
+	filter->d3d11_current_ptr =
+		(ID3D11Texture2D*)gs_texture_get_obj(
+		gs_texrender_get_texture(filter->texrender_current_ptr));
 
-	filter->d3d11_current_ptr.Reset();
-	filter->d3d11_previous_ptr.Attach((ID3D11Texture2D *)gs_texture_get_obj(
-		gs_texrender_get_texture(filter->texrender_previous_ptr)));
+	filter->d3d11_previous_ptr = nullptr;
+	filter->d3d11_previous_ptr =
+		(ID3D11Texture2D *)gs_texture_get_obj(
+		gs_texrender_get_texture(filter->texrender_previous_ptr));
 
-	filter->d3d11_current_ptr.Reset();
-	filter->d3d11_shared_ptr.Attach((ID3D11Texture2D *)gs_texture_get_obj(
-		filter->texture_shared_ptr));
+	filter->d3d11_shared_ptr = nullptr;
+	filter->d3d11_shared_ptr =
+		(ID3D11Texture2D *)gs_texture_get_obj(filter->texture_shared_ptr);
 }
 
 static void create_d3d11_context(void* data)
 {
 	auto filter = (struct filter *)data;
 	Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device = (ID3D11Device *)gs_get_device_obj();
-	d3d11_device->GetImmediateContext(filter->d3d11_context_ptr.GetAddressOf());
-	d3d11_device.Reset();
-}
-
-static void update_shared_texture_handle(void *data)
-{
-	auto filter = (struct filter *)data;
-	auto handle = gs_texture_get_shared_handle(filter->texture_shared_ptr);
-	auto ws = "\r\n\r\n\r\n<<<===>>> SHARED TEXTURE HANDLE : " +
-		  std::to_string(handle) + "\r\n\r\n\r\n";
-	blog(LOG_INFO, ws.c_str());
+	d3d11_device->GetImmediateContext(&filter->d3d11_context_ptr);
+	d3d11_device = nullptr;
 }
 
 static void create_shared_texture(void* data, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
-	
 	if (filter->texture_shared_ptr) { // should not be here
 		warn("create_shared_texture warning :: shared texture not empty");
 		gs_texture_destroy(filter->texture_shared_ptr);
-		filter->texture_shared_ptr = nullptr;
-		filter->d3d11_shared_ptr.Reset();
 	}
-
-	// Actually create the shared texture
 	filter->texture_shared_ptr = gs_texture_create(cx, cy, OBS_PLUGIN_COLOR_SPACE, 1, NULL, GS_SHARED_TEX);
-
-	// Make sure to update the shared handle
-	update_shared_texture_handle(filter);
-
-	// Create our d3d11 context the first time its required
-	if (!filter->d3d11_context_ptr.Get())
-		create_d3d11_context(filter);
-
-	// reset the texrender textures
-	initialize_texrenders(filter, cx, cy);
-
-	// update all the various texture pointers
-	update_texrender_pointers(filter);
 }
 
+static void update_shared_texture_handle(void* data)
+{
+	auto filter = (struct filter *)data;
+	auto handle = gs_texture_get_shared_handle(filter->texture_shared_ptr);
+	auto ws = "\r\n\r\n\r\n<<<===>>> SHARED TEXTURE HANDLE : " + std::to_string(handle) + "\r\n\r\n\r\n";
+	blog(LOG_INFO, ws.c_str());
+}
 
 static void render_shared_texture(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 {
@@ -137,20 +119,20 @@ static void render_shared_texture(void *data, obs_source_t *target, uint32_t cx,
 	buffer_texrender = nullptr;
 }
 
-static void copy_shared_texture(void *data)
+static void copy_shared_texture_resources(void *data)
 {
 	auto filter = (struct filter *)data;
 
-	if (filter->d3d11_context_ptr.Get()) {
+	if (filter->d3d11_context_ptr) {
 
 		if (filter->render_swap) {
 			filter->d3d11_context_ptr->CopyResource(
-				filter->d3d11_shared_ptr.Get(),
-				filter->d3d11_current_ptr.Get());
+				filter->d3d11_shared_ptr,
+				filter->d3d11_current_ptr);
 		} else {
 			filter->d3d11_context_ptr->CopyResource(
-				filter->d3d11_shared_ptr.Get(),
-				filter->d3d11_previous_ptr.Get());
+				filter->d3d11_shared_ptr,
+				filter->d3d11_previous_ptr);
 		}
 
 		if (filter->render_flush)
@@ -196,27 +178,29 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	if (size_changed)
 	{
 		if (filter->texture_shared_ptr)
-		{
-			OutputDebugStringA("[DESTROY TEXTURES]");
+		{			
 			gs_texture_destroy(filter->texture_shared_ptr);
-			filter->d3d11_shared_ptr = nullptr;
 			filter->texture_shared_ptr = nullptr;
 		}
 	}
 
 	// create shared texture
 	if (!filter->texture_shared_ptr)
-	{
-		OutputDebugStringA("[CREATE TEXTURES]");
+	{		
 		create_shared_texture(filter, target_width, target_height);
+		update_shared_texture_handle(filter);
+		
+		if (!filter->d3d11_context_ptr)
+			create_d3d11_context(filter);
+		
+		initialize_texrenders(filter, target_width, target_height);
+		update_texrender_pointers(filter);
+
 		return;
 	}
-
-	// Render OBS
+	
 	render_shared_texture(filter, target, target_width, target_height);
-
-	// Copy latest texture to shared texture
-	copy_shared_texture(filter);
+	copy_shared_texture_resources(filter);
 		
 	filter->render_swap = !filter->render_swap;
 }
@@ -264,10 +248,10 @@ static void filter_destroy(void *data)
 
 		obs_enter_graphics();
 
-		filter->d3d11_shared_ptr.Reset();
-		filter->d3d11_current_ptr.Reset();
-		filter->d3d11_previous_ptr.Reset();
-		filter->d3d11_context_ptr.Reset();
+		filter->d3d11_shared_ptr = nullptr;
+		filter->d3d11_current_ptr = nullptr;
+		filter->d3d11_previous_ptr = nullptr;
+		filter->d3d11_context_ptr = nullptr;
 
 		gs_texrender_destroy(filter->texrender_current_ptr);		
 		gs_texrender_destroy(filter->texrender_previous_ptr);
