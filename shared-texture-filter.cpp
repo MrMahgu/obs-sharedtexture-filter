@@ -83,6 +83,8 @@ static void create_shared_texture(void* data, uint32_t cx, uint32_t cy)
 	if (filter->texture_shared_ptr) { // should not be here
 		warn("create_shared_texture warning :: shared texture not empty");
 		gs_texture_destroy(filter->texture_shared_ptr);
+		filter->texture_shared_ptr = nullptr;
+		filter->d3d11_shared_ptr = nullptr;
 	}
 
 	// Actually create the texture
