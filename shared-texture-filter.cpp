@@ -31,7 +31,7 @@ static void filter_defaults(obs_data_t *settings)
 
 namespace SharedTexture {
 
-static void initialize_texrender(void *data, uint32_t width, uint32_t height)
+static void initialize_texrenders(void *data, uint32_t width, uint32_t height)
 {
 	auto filter = (struct filter *)data;
 
@@ -47,7 +47,7 @@ static void initialize_texrender(void *data, uint32_t width, uint32_t height)
 }
 
 
-static void update_texture_pointers(void *data)
+static void update_texrender_pointers(void *data)
 {
 	auto filter = (struct filter *)data;
 
@@ -94,7 +94,7 @@ static void update_shared_texture_handle(void* data)
 	blog(LOG_INFO, ws.c_str());
 }
 
-static void render_texture(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
+static void render_shared_texture(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;	
 
@@ -122,7 +122,7 @@ static void render_texture(void *data, obs_source_t *target, uint32_t cx, uint32
 	buffer_texrender = nullptr;
 }
 
-static void copy_texture_resources(void* data)
+static void copy_shared_texture_resources(void *data)
 {
 	auto filter = (struct filter *)data;
 
@@ -196,14 +196,14 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 		if (!filter->d3d11_context_ptr)
 			create_d3d11_context(filter);
 		
-		initialize_texrender(filter, target_width, target_height);
-		update_texture_pointers(filter);
+		initialize_texrenders(filter, target_width, target_height);
+		update_texrender_pointers(filter);
 
 		return;
 	}
 	
-	render_texture(filter, target, target_width, target_height);
-	copy_texture_resources(filter);
+	render_shared_texture(filter, target, target_width, target_height);
+	copy_shared_texture_resources(filter);
 		
 	filter->render_swap = !filter->render_swap;
 }
