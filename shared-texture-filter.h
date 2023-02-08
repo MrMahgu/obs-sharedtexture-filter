@@ -28,10 +28,6 @@
 #define info(format, ...) obs_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) obs_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
-static const char *filter_get_name(void *unused);
-static obs_properties_t *filter_properties(void *data);
-static void filter_defaults(obs_data_t *settings);
-
 bool obs_module_load(void);
 void obs_module_unload();
 
@@ -39,6 +35,10 @@ static void debug_report_version();
 
 namespace SharedTexture {
 // OBS plugin stuff
+
+static const char *filter_get_name(void *unused);
+static obs_properties_t *filter_properties(void *data);
+static void filter_defaults(obs_data_t *settings);
 
 static void *filter_create(obs_data_t *settings, obs_source_t *source);
 static void filter_destroy(void *data);
@@ -61,6 +61,7 @@ static void update_pointers(void *data);
 namespace Texture {
 static void copy_resources(void *data);
 static void create(void *data, uint32_t cx, uint32_t cy);
+static void destroy(void *data);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
 static void update_shared_handle(void *data);
 } // namespace Texture

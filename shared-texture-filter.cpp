@@ -7,6 +7,8 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(OBS_PLUGIN, OBS_PLUGIN_LANG)
 
+namespace SharedTexture {
+
 static const char *filter_get_name(void *unused)
 {
 	UNUSED_PARAMETER(unused);
@@ -30,8 +32,6 @@ static void filter_defaults(obs_data_t *settings)
 {
 	UNUSED_PARAMETER(settings);
 }
-
-namespace SharedTexture {
 
 namespace Texrender {
 
@@ -88,13 +88,9 @@ static void create(void *data, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
 
-	// Should NEVER have a valid shared_ptr here
-	if (filter->texture_shared_ptr) { // should not be here
-		warn("SharedTexture::Texture::create warning :: shared texture not empty");
-		gs_texture_destroy(filter->texture_shared_ptr);
-		filter->texture_shared_ptr = nullptr;
-		filter->d3d11_shared_ptr = nullptr;
-	}
+	// texture shouldn't be pointing to anything yo
+	if (filter->texture_shared_ptr)
+		return;
 
 	// Actually create the texture
 	filter->texture_shared_ptr = gs_texture_create(
@@ -114,6 +110,14 @@ static void create(void *data, uint32_t cx, uint32_t cy)
 	Texrender::update_pointers(filter);
 }
 
+static void destroy(void* data)
+{
+	auto filter = (struct filter *)data;
+
+	gs_texture_destroy(filter->texture_shared_ptr);
+	filter->texture_shared_ptr = nullptr;
+}
+
 static void update_shared_handle(void *data)
 {
 	auto filter = (struct filter *)data;
@@ -130,10 +134,12 @@ static void render(void *data, obs_source_t *target, uint32_t cx,
 {
 	auto filter = (struct filter *)data;
 
+	// Choose which texrender to write to
 	gs_texrender_t *buffer_texrender =
 		filter->render_swap ? filter->texrender_current_ptr
 				    : filter->texrender_previous_ptr;
 
+	// Render OBS source texture
 	gs_texrender_reset(buffer_texrender);
 	if (gs_texrender_begin(buffer_texrender, cx, cy)) {
 		struct vec4 background;
@@ -158,18 +164,18 @@ static void copy_resources(void *data)
 {
 	auto filter = (struct filter *)data;
 
-	if (filter->d3d11_context_ptr) {
+	// Only if we have a context
+	if (filter->d3d11_context_ptr)
+	{
+		// Choose correct texture pointer to use
+		ID3D11Texture2D *texture_ptr =
+			filter->render_swap ? filter->d3d11_current_ptr
+					    : filter->d3d11_previous_ptr;
 
-		if (filter->render_swap) {
-			filter->d3d11_context_ptr->CopyResource(
-				filter->d3d11_shared_ptr,
-				filter->d3d11_current_ptr);
-		} else {
-			filter->d3d11_context_ptr->CopyResource(
-				filter->d3d11_shared_ptr,
-				filter->d3d11_previous_ptr);
-		}
+		// Send copy command to queue
+		filter->d3d11_context_ptr->CopyResource(filter->d3d11_shared_ptr, texture_ptr);
 
+		// Fush command queue if set
 		if (filter->render_flush)
 			filter->d3d11_context_ptr->Flush();
 	}
@@ -198,6 +204,7 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	auto target_width = obs_source_get_base_width(target);
 	auto target_height = obs_source_get_base_height(target);
 
+	// Store a size changed state for later
 	auto size_changed = filter->texture_shared_width != target_width ||
 			    filter->texture_shared_height != target_height;
 
@@ -212,24 +219,28 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	if (target_width == 0 || target_height == 0)
 		return;
 
+	// Check to see if we need to destroy the current texture
+	// This happens if the source texture size changes from above
 	if (size_changed && filter->texture_shared_ptr)
 	{			
-		gs_texture_destroy(filter->texture_shared_ptr);
-		filter->texture_shared_ptr = nullptr;
+		Texture::destroy(filter);
 	}
 
 	// create shared texture
 	if (!filter->texture_shared_ptr)
 	{		
 		Texture::create(filter, target_width, target_height);
-
-
 		return;
 	}
-	
+
+	// Render the OBS texture
 	Texture::render(filter, target, target_width, target_height);
+
+	// Copy the OBS texture to our shared texture
 	Texture::copy_resources(filter);
-		
+
+	// Swap render_textures
+	// NOTE :: Not sure if this is needed when flushing
 	filter->render_swap = !filter->render_swap;
 }
 
