@@ -5,7 +5,6 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
-#include <wrl/client.h>
 
 #define OBS_PLUGIN "shared-texture-filter"
 #define OBS_PLUGIN_ "shared_texture_filter"
@@ -73,7 +72,7 @@ struct filter {
 	bool render_swap;
 	bool render_flush;
 
-	Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3d11_context_ptr;
+	ID3D11DeviceContext *d3d11_context_ptr;
 };
 
 struct obs_source_info create_filter_info()

@@ -68,7 +68,7 @@ static void update_texrender_pointers(void *data)
 static void create_d3d11_context(void* data)
 {
 	auto filter = (struct filter *)data;
-	Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device = (ID3D11Device *)gs_get_device_obj();
+	ID3D11Device *d3d11_device = (ID3D11Device *)gs_get_device_obj();
 	d3d11_device->GetImmediateContext(&filter->d3d11_context_ptr);
 	d3d11_device = nullptr;
 }
