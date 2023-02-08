@@ -46,7 +46,6 @@ static void initialize_texrenders(void *data, uint32_t width, uint32_t height)
 	}
 }
 
-
 static void update_texrender_pointers(void *data)
 {
 	auto filter = (struct filter *)data;
@@ -77,10 +76,8 @@ static void create_d3d11_context(void* data)
 static void create_shared_texture(void* data, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
-	if (filter->texture_shared_ptr) {
-		// should not be here
+	if (filter->texture_shared_ptr) { // should not be here
 		warn("create_shared_texture warning :: shared texture not empty");
-		// we should already be inside graphics
 		gs_texture_destroy(filter->texture_shared_ptr);
 	}
 	filter->texture_shared_ptr = gs_texture_create(cx, cy, OBS_PLUGIN_COLOR_SPACE, 1, NULL, GS_SHARED_TEX);
@@ -218,7 +215,7 @@ static void filter_update(void *data, obs_data_t *settings)
 
 	// do some thing??
 
-	obs_add_main_render_callback(filter_render_callback, filter);	
+	obs_add_main_render_callback(filter_render_callback, filter);
 }
 
 static void *filter_create(obs_data_t *settings, obs_source_t *source)
@@ -243,7 +240,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 static void filter_destroy(void *data)
 {
-	auto filter = (struct filter *)data;	
+	auto filter = (struct filter *)data;
 	
 	if (filter)
 	{
@@ -254,7 +251,6 @@ static void filter_destroy(void *data)
 		filter->d3d11_shared_ptr = nullptr;
 		filter->d3d11_current_ptr = nullptr;
 		filter->d3d11_previous_ptr = nullptr;
-
 		filter->d3d11_context_ptr = nullptr;
 
 		gs_texrender_destroy(filter->texrender_current_ptr);		
@@ -274,7 +270,7 @@ static void filter_video_render(void* data, gs_effect_t* effect)
 {	
 	UNUSED_PARAMETER(effect);
 
-	auto* filter = (struct filter *)data;
+	auto filter = (struct filter *)data;
 
 	if (!filter->context)
 		return;
