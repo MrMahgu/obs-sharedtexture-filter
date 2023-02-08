@@ -49,7 +49,7 @@ static void filter_video_render(void *data, gs_effect_t *effect);
 static void create_d3d11_context(void *data);
 static void initialize_texrenders(void *data, uint32_t width, uint32_t height);
 static void update_texrender_pointers(void *data);
-static void copy_shared_texture_resources(void *data);
+static void copy_shared_texture(void *data);
 static void create_shared_texture(void *data, uint32_t cx, uint32_t cy);
 static void render_shared_texture(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
 static void update_shared_texture_handle(void *data);
@@ -66,14 +66,13 @@ struct filter {
 	uint32_t texture_shared_width;
 	uint32_t texture_shared_height;
 
-	ID3D11Texture2D *d3d11_shared_ptr;
-	ID3D11Texture2D *d3d11_current_ptr;
-	ID3D11Texture2D *d3d11_previous_ptr;
-
 	bool render_swap;
 	bool render_flush;
 
 	Microsoft::WRL::ComPtr<ID3D11DeviceContext> d3d11_context_ptr;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> d3d11_shared_ptr;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> d3d11_current_ptr;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> d3d11_previous_ptr;
 };
 
 struct obs_source_info create_filter_info()
