@@ -1,6 +1,8 @@
 #include "shared-texture-filter.h"
 
+#ifdef DEBUG
 #include <string>
+#endif;
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(OBS_PLUGIN, OBS_PLUGIN_LANG)
@@ -76,18 +78,37 @@ static void create_d3d11_context(void* data)
 static void create_shared_texture(void* data, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
+
+	// Should NEVER have a valid shared_ptr here
 	if (filter->texture_shared_ptr) { // should not be here
 		warn("create_shared_texture warning :: shared texture not empty");
 		gs_texture_destroy(filter->texture_shared_ptr);
 	}
+
+	// Actually create the texture
 	filter->texture_shared_ptr = gs_texture_create(cx, cy, OBS_PLUGIN_COLOR_SPACE, 1, NULL, GS_SHARED_TEX);
+
+	// Update the shared texture handles
+	update_shared_texture_handle(filter);
+
+	// Create out d3d11 device context if it is empty
+	if (!filter->d3d11_context_ptr)
+		create_d3d11_context(filter);
+
+	// Reset texrender textures
+	initialize_texrenders(filter, cx, cy);
+
+	// Update various texture pointers (d3d11, texrender)
+	update_texrender_pointers(filter);
 }
 
 static void update_shared_texture_handle(void* data)
 {
 	auto filter = (struct filter *)data;
 	auto handle = gs_texture_get_shared_handle(filter->texture_shared_ptr);
+#ifdef DEBUG
 	auto ws = "\r\n\r\n\r\n<<<===>>> SHARED TEXTURE HANDLE : " + std::to_string(handle) + "\r\n\r\n\r\n";
+#endif;
 	blog(LOG_INFO, ws.c_str());
 }
 
@@ -188,13 +209,7 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	if (!filter->texture_shared_ptr)
 	{		
 		create_shared_texture(filter, target_width, target_height);
-		update_shared_texture_handle(filter);
-		
-		if (!filter->d3d11_context_ptr)
-			create_d3d11_context(filter);
-		
-		initialize_texrenders(filter, target_width, target_height);
-		update_texrender_pointers(filter);
+
 
 		return;
 	}
