@@ -3,9 +3,6 @@
 #include <obs-module.h>
 #include <graphics/graphics.h>
 
-#include <d3d11.h>
-#include <dxgi.h>
-
 #include "shared-memory.h"
 
 #define OBS_PLUGIN "shared-texture-filter"
@@ -15,7 +12,7 @@
 #define OBS_PLUGIN_VERSION_RELEASE 1
 #define OBS_PLUGIN_VERSION_STRING "0.0.1"
 #define OBS_PLUGIN_LANG "en-US"
-#define OBS_PLUGIN_COLOR_SPACE GS_BGRA
+#define OBS_PLUGIN_COLOR_SPACE GS_RGBA16
 
 #define OBS_UI_SETTING_FILTER_NAME "mahgu.sharedtexture.ui.filter_title"
 #define OBS_UI_SETTING_DESC_NAME "mahgu.sharedtexture.ui.name_desc"
@@ -46,11 +43,6 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy);
 static void filter_update(void *data, obs_data_t *settings);
 static void filter_video_render(void *data, gs_effect_t *effect);
 
-// D3D11 Utility function to obtain device context from OBS d3d11 device
-namespace D3D11 {
-static void create_context(void *data);
-}
-
 // Shared texture stuff
 
 namespace Texrender {
@@ -59,7 +51,7 @@ static void update_pointers(void *data);
 } // namespace Texrender
 
 namespace Texture {
-static void copy_resources(void *data);
+static void copy(void *data);
 static void create(void *data, uint32_t cx, uint32_t cy);
 static void destroy(void *data);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
@@ -73,18 +65,14 @@ struct filter {
 	gs_texrender_t *texrender_previous_ptr;
 
 	gs_texture_t *texture_shared_ptr;
+	gs_texture_t *texture_current_ptr;
+	gs_texture_t *texture_previous_ptr;
 
 	uint32_t texture_shared_width;
 	uint32_t texture_shared_height;
 
-	ID3D11Texture2D *d3d11_shared_ptr;
-	ID3D11Texture2D *d3d11_current_ptr;
-	ID3D11Texture2D *d3d11_previous_ptr;
-
 	bool render_swap;
 	bool render_flush;
-
-	ID3D11DeviceContext *d3d11_context_ptr;
 };
 
 struct obs_source_info create_filter_info()

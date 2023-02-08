@@ -55,32 +55,11 @@ static void update_pointers(void *data)
 {
 	auto filter = (struct filter *)data;
 
-	filter->d3d11_current_ptr = nullptr;
-	filter->d3d11_current_ptr = (ID3D11Texture2D *)gs_texture_get_obj(
-		gs_texrender_get_texture(filter->texrender_current_ptr));
-
-	filter->d3d11_previous_ptr = nullptr;
-	filter->d3d11_previous_ptr = (ID3D11Texture2D *)gs_texture_get_obj(
-		gs_texrender_get_texture(filter->texrender_previous_ptr));
-
-	filter->d3d11_shared_ptr = nullptr;
-	filter->d3d11_shared_ptr = (ID3D11Texture2D *)gs_texture_get_obj(
-		filter->texture_shared_ptr);
+	filter->texture_current_ptr = gs_texrender_get_texture(filter->texrender_current_ptr);
+	filter->texture_previous_ptr = gs_texrender_get_texture(filter->texrender_previous_ptr);
 }
 
 } // namespace Texrender
-
-namespace D3D11 {
-
-static void create_context(void *data)
-{
-	auto filter = (struct filter *)data;
-	ID3D11Device *d3d11_device = (ID3D11Device *)gs_get_device_obj();
-	d3d11_device->GetImmediateContext(&filter->d3d11_context_ptr);
-	d3d11_device = nullptr;
-}
-
-} // namespace d3d11
 
 namespace Texture {
 
@@ -98,10 +77,6 @@ static void create(void *data, uint32_t cx, uint32_t cy)
 
 	// Update the shared texture handles
 	update_shared_handle(filter);
-
-	// Create out d3d11 device context if it is empty
-	if (!filter->d3d11_context_ptr)
-		D3D11::create_context(filter);
 
 	// Reset texrender textures
 	Texrender::reset_textures(filter, cx, cy);
@@ -125,9 +100,15 @@ static void update_shared_handle(void *data)
 #ifdef DEBUG
 	auto ws = "\r\n\r\n\r\n<<<===>>> SHARED TEXTURE HANDLE : " +
 		  std::to_string(handle) + "\r\n\r\n\r\n";
-#endif;
 	blog(LOG_INFO, ws.c_str());
+#endif;	
+
+
 }
+
+#ifdef DEBUG
+static bool hack_101 = true;
+#endif;
 
 static void render(void *data, obs_source_t *target, uint32_t cx,
 				  uint32_t cy)
@@ -156,29 +137,26 @@ static void render(void *data, obs_source_t *target, uint32_t cx,
 		gs_blend_state_pop();
 		gs_texrender_end(buffer_texrender);
 	}
-
+	
 	buffer_texrender = nullptr;
 }
 
-static void copy_resources(void *data)
+static void copy(void *data)
 {
 	auto filter = (struct filter *)data;
 
-	// Only if we have a context
-	if (filter->d3d11_context_ptr)
-	{
-		// Choose correct texture pointer to use
-		ID3D11Texture2D *texture_ptr =
-			filter->render_swap ? filter->d3d11_current_ptr
-					    : filter->d3d11_previous_ptr;
+	if (!filter->texture_shared_ptr)
+		return;
 
-		// Send copy command to queue
-		filter->d3d11_context_ptr->CopyResource(filter->d3d11_shared_ptr, texture_ptr);
+	gs_texture_t *source_texture = filter->render_swap ? filter->texture_current_ptr
+						: filter->texture_previous_ptr;
 
-		// Fush command queue if set
-		if (filter->render_flush)
-			filter->d3d11_context_ptr->Flush();
-	}
+	gs_copy_texture(filter->texture_shared_ptr, source_texture);
+
+	source_texture = nullptr;
+	
+	if (filter->render_flush)
+		gs_flush();
 }
 
 } // namespace Texture
@@ -237,7 +215,7 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	Texture::render(filter, target, target_width, target_height);
 
 	// Copy the OBS texture to our shared texture
-	Texture::copy_resources(filter);
+	Texture::copy(filter);
 
 	// Swap render_textures
 	// NOTE :: Not sure if this is needed when flushing
@@ -287,18 +265,21 @@ static void filter_destroy(void *data)
 
 		obs_enter_graphics();
 
-		filter->d3d11_shared_ptr = nullptr;
-		filter->d3d11_current_ptr = nullptr;
-		filter->d3d11_previous_ptr = nullptr;
-		filter->d3d11_context_ptr = nullptr;
+		// de-reference some pointers
+		filter->texture_current_ptr = nullptr;
+		filter->texture_previous_ptr = nullptr;
 
-		gs_texrender_destroy(filter->texrender_current_ptr);		
+		gs_texrender_destroy(filter->texrender_current_ptr);
 		gs_texrender_destroy(filter->texrender_previous_ptr);
+
+		filter->texrender_current_ptr = nullptr;
+		filter->texrender_previous_ptr = nullptr;
 
 		if (filter->texture_shared_ptr)
 		{
 			gs_texture_destroy(filter->texture_shared_ptr);
-		}
+			filter->texture_shared_ptr = nullptr;
+		}		
 
 		obs_leave_graphics();
 		bfree(filter);
