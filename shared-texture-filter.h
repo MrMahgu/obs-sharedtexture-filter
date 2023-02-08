@@ -38,22 +38,23 @@ static void debug_report_version();
 namespace SharedTexture {
 
 // OBS plugin stuff
+
 static void *filter_create(obs_data_t *settings, obs_source_t *source);
 static void filter_destroy(void *data);
 static void filter_render_callback(void *data, uint32_t cx, uint32_t cy);
 static void filter_update(void *data, obs_data_t *settings);
 static void filter_video_render(void *data, gs_effect_t *effect);
 
-// Additional shared-texture stuff
+// D3D11 Utility function to obtain device context from OBS d3d11 device
 static void create_d3d11_context(void *data);
-static void initialize_texrenders(void *data, uint32_t width, uint32_t height);
-static void update_texrender_pointers(void *data);
-static void copy_shared_texture_resources(void *data);
-static void create_shared_texture(void *data, uint32_t cx, uint32_t cy);
-static void render_shared_texture(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
-static void update_shared_texture_handle(void *data);
 
-// Filter data struct
+static void texrender_reset_textures(void *data, uint32_t width, uint32_t height);
+static void texrender_update_pointers(void *data);
+static void shared_texture_copy_resources(void *data);
+static void shared_texture_create(void *data, uint32_t cx, uint32_t cy);
+static void shared_texture_render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
+static void shared_texture_update_shared_handle(void *data);
+
 struct filter {
 	obs_source_t *context;
 

@@ -33,7 +33,8 @@ static void filter_defaults(obs_data_t *settings)
 
 namespace SharedTexture {
 
-static void initialize_texrenders(void *data, uint32_t width, uint32_t height)
+static void texrender_reset_textures(void *data, uint32_t width,
+				     uint32_t height)
 {
 	auto filter = (struct filter *)data;
 
@@ -48,7 +49,7 @@ static void initialize_texrenders(void *data, uint32_t width, uint32_t height)
 	}
 }
 
-static void update_texrender_pointers(void *data)
+static void texrender_update_pointers(void *data)
 {
 	auto filter = (struct filter *)data;
 
@@ -75,13 +76,13 @@ static void create_d3d11_context(void* data)
 	d3d11_device = nullptr;
 }
 
-static void create_shared_texture(void* data, uint32_t cx, uint32_t cy)
+static void shared_texture_create(void *data, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
 
 	// Should NEVER have a valid shared_ptr here
 	if (filter->texture_shared_ptr) { // should not be here
-		warn("create_shared_texture warning :: shared texture not empty");
+		warn("shared_texture_create warning :: shared texture not empty");
 		gs_texture_destroy(filter->texture_shared_ptr);
 		filter->texture_shared_ptr = nullptr;
 		filter->d3d11_shared_ptr = nullptr;
@@ -91,20 +92,20 @@ static void create_shared_texture(void* data, uint32_t cx, uint32_t cy)
 	filter->texture_shared_ptr = gs_texture_create(cx, cy, OBS_PLUGIN_COLOR_SPACE, 1, NULL, GS_SHARED_TEX);
 
 	// Update the shared texture handles
-	update_shared_texture_handle(filter);
+	shared_texture_update_shared_handle(filter);
 
 	// Create out d3d11 device context if it is empty
 	if (!filter->d3d11_context_ptr)
 		create_d3d11_context(filter);
 
 	// Reset texrender textures
-	initialize_texrenders(filter, cx, cy);
+	texrender_reset_textures(filter, cx, cy);
 
 	// Update various texture pointers (d3d11, texrender)
-	update_texrender_pointers(filter);
+	texrender_update_pointers(filter);
 }
 
-static void update_shared_texture_handle(void* data)
+static void shared_texture_update_shared_handle(void *data)
 {
 	auto filter = (struct filter *)data;
 	auto handle = gs_texture_get_shared_handle(filter->texture_shared_ptr);
@@ -142,7 +143,7 @@ static void render_shared_texture(void *data, obs_source_t *target, uint32_t cx,
 	buffer_texrender = nullptr;
 }
 
-static void copy_shared_texture_resources(void *data)
+static void shared_texture_copy_resources(void *data)
 {
 	auto filter = (struct filter *)data;
 
@@ -207,14 +208,14 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	// create shared texture
 	if (!filter->texture_shared_ptr)
 	{		
-		create_shared_texture(filter, target_width, target_height);
+		shared_texture_create(filter, target_width, target_height);
 
 
 		return;
 	}
 	
 	render_shared_texture(filter, target, target_width, target_height);
-	copy_shared_texture_resources(filter);
+	shared_texture_copy_resources(filter);
 		
 	filter->render_swap = !filter->render_swap;
 }
