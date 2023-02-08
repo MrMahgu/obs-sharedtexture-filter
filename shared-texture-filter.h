@@ -55,7 +55,7 @@ static void copy(void *data);
 static void create(void *data, uint32_t cx, uint32_t cy);
 static void destroy(void *data);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
-static void update_shared_handle(void *data);
+static void get_shared_handle(void *data);
 } // namespace Texture
 
 struct filter {
