@@ -198,13 +198,10 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	if (target_width == 0 || target_height == 0)
 		return;
 
-	if (size_changed)
-	{
-		if (filter->texture_shared_ptr)
-		{			
-			gs_texture_destroy(filter->texture_shared_ptr);
-			filter->texture_shared_ptr = nullptr;
-		}
+	if (size_changed && filter->texture_shared_ptr)
+	{			
+		gs_texture_destroy(filter->texture_shared_ptr);
+		filter->texture_shared_ptr = nullptr;
 	}
 
 	// create shared texture
