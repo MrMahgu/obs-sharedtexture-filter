@@ -7,7 +7,8 @@
 // Until I figure something out, this lets me know that the plugin is using
 // some custom OBS changes
 
-// OBS has been customized to support shared texrender (well, just the textures)
+// OBS has been customized to support shared texrender
+// (well, just the textures)
 #define OBS_SHARED_TEXRENDER_PATCH
 
 OBS_DECLARE_MODULE()
@@ -41,8 +42,8 @@ static void filter_defaults(obs_data_t *settings)
 
 namespace Texrender {
 
-// This is an odd way for me to force OBS to rebuild the texrender_t internal textures, which in our case
-// have just gone through a size change
+// This is an odd way for me to force OBS to rebuild the texrender_t internal
+// textures, which in our case have just gone through a size change
 static void reset_textures(void *data, uint32_t width, uint32_t height)
 {
 	auto filter = (struct filter *)data;
@@ -85,9 +86,10 @@ static void debug_report_shared_handle(void *data)
 }
 static void debug_report_shared_handle2(void *data)
 {
-	auto filter = (struct filter *)data;	
+	auto filter = (struct filter *)data;
 	//texrender_current_ptr
-	auto handle = gs_texture_get_shared_handle(gs_texrender_get_texture(filter->texrender_current_ptr));
+	auto handle = gs_texture_get_shared_handle(
+		gs_texrender_get_texture(filter->texrender_current_ptr));
 	auto ws = "\r\n\r\n\r\n<<<===>>> POSSIBLE TEXTURE HANDLE : " +
 		  std::to_string(handle) + "\r\n\r\n\r\n";
 	blog(LOG_INFO, ws.c_str());
@@ -115,7 +117,6 @@ static void create(void *data, uint32_t cx, uint32_t cy)
 #ifdef DEBUG
 	debug_report_shared_handle2(filter);
 #endif
-
 }
 
 // Destroys the shared texture from the device
@@ -176,7 +177,7 @@ static void copy(void *data)
 
 	gs_copy_texture(filter->texture_shared_ptr, source_texture);
 
-	source_texture = nullptr;	
+	source_texture = nullptr;
 
 	if (filter->render_flush)
 		gs_flush();
@@ -237,7 +238,8 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	Texture::copy(filter);
 
 	// Swap which internal texture to use next frame
-	// Not sure if any of this swapping texture stuff is really usefull or not
+	// Not sure if any of this swapping texture stuff is really usefull or
+	// not
 	filter->render_swap = !filter->render_swap;
 }
 
@@ -316,7 +318,6 @@ static void filter_video_render(void *data, gs_effect_t *effect)
 }
 
 } // namespace SharedTexture
-
 
 // Writes a simple log entry to OBS
 static void report_version()

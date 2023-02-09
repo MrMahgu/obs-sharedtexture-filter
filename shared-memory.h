@@ -4,8 +4,7 @@ namespace SharedMemory {
 
 // SharedMemory stuff
 
-enum CreateStatus
-{
+enum CreateStatus {
 	SM_VALID,
 	SM_ALREADY_EXISTS,
 	SM_FAILED,
