@@ -41,8 +41,6 @@ static void filter_defaults(obs_data_t *settings)
 }
 
 namespace Texrender {
-
-
 #ifdef DEBUG
 static void debug_report_shared_handle2(void *data)
 {
@@ -57,26 +55,30 @@ static void debug_report_shared_handle2(void *data)
 }
 #endif
 
-// Makes sure the underlying gs_texture_t is created and
-// updates the pointer reference
-static void reset_texture(void *data, uint32_t width, uint32_t height)
-{
-	auto filter = (struct filter *)data;	
-
-	gs_texrender_reset(filter->texrender_current_ptr);
-	if (gs_texrender_begin(filter->texrender_current_ptr, width, height)) {
-		gs_texrender_end(filter->texrender_current_ptr);
-	}
-}
-
-static void update_pointer(void* data)
+// Updates pointer reference to out gs_texture_t behind our texrender
+static void update_pointer(void *data)
 {
 	auto filter = (struct filter *)data;
 
 	filter->texture_current_ptr =
 		gs_texrender_get_texture(filter->texrender_current_ptr);
-
+#ifdef DEBUG
 	debug_report_shared_handle2(filter);
+#endif
+}
+
+// Makes sure the underlying gs_texture_t is created and
+// updates the pointer reference
+static void reset_texture(void *data, uint32_t width, uint32_t height)
+{
+	auto filter = (struct filter *)data;
+
+	gs_texrender_reset(filter->texrender_current_ptr);
+	if (gs_texrender_begin(filter->texrender_current_ptr, width, height)) {
+		gs_texrender_end(filter->texrender_current_ptr);
+	}
+
+	update_pointer(filter);
 }
 
 // Renders the current OBS filter ?? to one of our buffer textures
@@ -145,7 +147,6 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	// Check if size has changed and reset out textures/texture pointers
 	if (size_changed) {
 		Texrender::reset_texture(filter, target_width, target_height);
-		Texrender::update_pointer(filter);
 		return;
 	}
 
@@ -203,7 +204,7 @@ static void filter_destroy(void *data)
 		gs_texrender_destroy(filter->texrender_current_ptr);
 
 		filter->texrender_current_ptr = nullptr;
-		
+
 		obs_leave_graphics();
 
 		bfree(filter);
