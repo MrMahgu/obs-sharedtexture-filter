@@ -42,21 +42,6 @@ static void filter_defaults(obs_data_t *settings)
 
 namespace Texrender {
 
-// Makes sure the underlying gs_texture_t is created and
-// updates the pointer reference
-static void reset_texture(void *data, uint32_t width, uint32_t height)
-{
-	auto filter = (struct filter *)data;
-
-	gs_texrender_reset(filter->texrender_current_ptr);
-	if (gs_texrender_begin(filter->texrender_current_ptr, width, height)) {
-		gs_texrender_end(filter->texrender_current_ptr);
-	}
-
-	filter->texture_current_ptr = nullptr;
-	filter->texture_current_ptr =
-		gs_texrender_get_texture(filter->texrender_current_ptr);
-}
 
 #ifdef DEBUG
 static void debug_report_shared_handle2(void *data)
@@ -72,6 +57,23 @@ static void debug_report_shared_handle2(void *data)
 	blog(LOG_INFO, ws.c_str());
 }
 #endif
+
+// Makes sure the underlying gs_texture_t is created and
+// updates the pointer reference
+static void reset_texture(void *data, uint32_t width, uint32_t height)
+{
+	auto filter = (struct filter *)data;	
+
+	gs_texrender_reset(filter->texrender_current_ptr);
+	if (gs_texrender_begin(filter->texrender_current_ptr, width, height)) {
+		gs_texrender_end(filter->texrender_current_ptr);
+	}
+
+	filter->texture_current_ptr =
+		gs_texrender_get_texture(filter->texrender_current_ptr);
+
+	debug_report_shared_handle2(filter);
+}
 
 // Renders the current OBS filter ?? to one of our buffer textures
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
@@ -126,8 +128,11 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 
 	// Check if size has changed and reset out textures/texture pointers
 	if (filter->texture_width != target_width ||
-	    filter->texture_height != target_height)
+	    filter->texture_height != target_height) {
+		filter->texture_width = target_width;
+		filter->texture_height = target_height;
 		Texrender::reset_texture(filter, cx, cy);
+	}
 
 	// Render and copy the latest frame to our shared texture
 	Texrender::render(filter, target, target_width, target_height);
@@ -201,8 +206,6 @@ static void filter_video_render(void *data, gs_effect_t *effect)
 	obs_source_skip_video_filter(filter->context);
 }
 
-} // namespace SharedTexture
-
 // Writes a simple log entry to OBS
 void report_version()
 {
@@ -215,13 +218,15 @@ void report_version()
 #endif
 }
 
+} // namespace SharedTexture
+
 bool obs_module_load(void)
 {
 	auto filter_info = SharedTexture::create_filter_info();
 
 	obs_register_source(&filter_info);
 
-	report_version();
+	SharedTexture::report_version();
 
 	return true;
 }

@@ -25,14 +25,14 @@
 #define info(format, ...) obs_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) obs_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
-void report_version();
-
 bool obs_module_load(void);
 void obs_module_unload();
 
-
-
 namespace SharedTexture {
+// DEBUG stuff
+
+void report_version();
+
 // OBS plugin stuff
 
 static const char *filter_get_name(void *unused);
@@ -50,15 +50,9 @@ static void filter_video_render(void *data, gs_effect_t *effect);
 namespace Texrender {
 
 static void reset_texture(void *data, uint32_t width, uint32_t height);
-
-} // namespace Texrender
-
-namespace Texture {
-
-static void create(void *data, uint32_t cx, uint32_t cy);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
 
-} // namespace Texture
+} // namespace Texrender
 
 struct filter {
 	obs_source_t *context;
