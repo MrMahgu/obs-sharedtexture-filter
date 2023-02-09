@@ -211,7 +211,7 @@ void report_version()
 	     OBS_PLUGIN_VERSION_STRING);
 #else
 	info("obs-sharedtexture-filter [mrmahgu] - version %s",
-	     OBS_PLUGIN_vERSION_STRING);
+	     OBS_PLUGIN_VERSION_STRING);
 #endif
 }
 
