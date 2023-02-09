@@ -57,11 +57,14 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
 struct filter {
 	obs_source_t *context;
 
-	gs_texrender_t *texrender_current_ptr;
-	gs_texture_t *texture_current_ptr;
+	uint32_t width;
+	uint32_t height;
 
-	uint32_t texture_width;
-	uint32_t texture_height;
+	enum gs_color_space prev_space;
+	enum gs_color_format shared_format;
+
+	gs_texture_t *prev_target;
+	gs_texture_t *shared_texture;
 };
 
 struct obs_source_info create_filter_info()
