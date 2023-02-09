@@ -9,7 +9,7 @@
 
 // OBS has been customized to support shared texrender
 // (well, just the textures)
-#define OBS_SHARED_TEXRENDER_PATCH
+#define PATCH_TEXRENDER_SHARED
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(OBS_PLUGIN, OBS_PLUGIN_LANG)
@@ -42,9 +42,9 @@ static void filter_defaults(obs_data_t *settings)
 
 namespace Texrender {
 
-// This is an odd way for me to force OBS to rebuild the texrender_t internal
-// textures, which in our case have just gone through a size change
-static void reset_textures(void *data, uint32_t width, uint32_t height)
+// Makes sure the underlying gs_texture_t is created and
+// updates the pointer reference
+static void reset_texture(void *data, uint32_t width, uint32_t height)
 {
 	auto filter = (struct filter *)data;
 
@@ -53,22 +53,8 @@ static void reset_textures(void *data, uint32_t width, uint32_t height)
 		gs_texrender_end(filter->texrender_current_ptr);
 	}
 
-	gs_texrender_reset(filter->texrender_previous_ptr);
-	if (gs_texrender_begin(filter->texrender_previous_ptr, width, height)) {
-		gs_texrender_end(filter->texrender_previous_ptr);
-	}
-}
-
-// Updates our internal references to the texrender_t texture_t pointers
-static void update_pointers(void *data)
-{
-	auto filter = (struct filter *)data;
-
 	filter->texture_current_ptr =
 		gs_texrender_get_texture(filter->texrender_current_ptr);
-
-	filter->texture_previous_ptr =
-		gs_texrender_get_texture(filter->texrender_previous_ptr);
 }
 
 } // namespace Texrender
@@ -76,22 +62,16 @@ static void update_pointers(void *data)
 namespace Texture {
 
 #ifdef DEBUG
-static void debug_report_shared_handle(void *data)
-{
-	auto filter = (struct filter *)data;
-	auto handle = gs_texture_get_shared_handle(filter->texture_shared_ptr);
-	auto ws = "\r\n\r\n\r\n<<<===>>> SHARED TEXTURE HANDLE : " +
-		  std::to_string(handle) + "\r\n\r\n\r\n";
-	blog(LOG_INFO, ws.c_str());
-}
 static void debug_report_shared_handle2(void *data)
 {
 	auto filter = (struct filter *)data;
-	//texrender_current_ptr
+
 	auto handle = gs_texture_get_shared_handle(
 		gs_texrender_get_texture(filter->texrender_current_ptr));
+
 	auto ws = "\r\n\r\n\r\n<<<===>>> POSSIBLE TEXTURE HANDLE : " +
 		  std::to_string(handle) + "\r\n\r\n\r\n";
+
 	blog(LOG_INFO, ws.c_str());
 }
 #endif
@@ -101,31 +81,11 @@ static void create(void *data, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
 
-	if (filter->texture_shared_ptr)
-		return;
-
-	filter->texture_shared_ptr = gs_texture_create(
-		cx, cy, OBS_PLUGIN_COLOR_SPACE, 1, NULL, GS_SHARED_TEX);
-
-#ifdef DEBUG
-	debug_report_shared_handle(filter);
-#endif
-
-	Texrender::reset_textures(filter, cx, cy);
-	Texrender::update_pointers(filter);
+	Texrender::reset_texture(filter, cx, cy);
 
 #ifdef DEBUG
 	debug_report_shared_handle2(filter);
 #endif
-}
-
-// Destroys the shared texture from the device
-static void destroy(void *data)
-{
-	auto filter = (struct filter *)data;
-
-	gs_texture_destroy(filter->texture_shared_ptr);
-	filter->texture_shared_ptr = nullptr;
 }
 
 // Renders the current OBS filter ?? to one of our buffer textures
@@ -133,17 +93,9 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 {
 	auto filter = (struct filter *)data;
 
-	// Choose which texrender to write to
-	/*
-	gs_texrender_t *buffer_texrender =
-		filter->render_swap ? filter->texrender_current_ptr
-				    : filter->texrender_previous_ptr;
-	*/
-	gs_texrender_t *buffer_texrender = filter->texrender_current_ptr;
-
 	// Render OBS source texture
-	gs_texrender_reset(buffer_texrender);
-	if (gs_texrender_begin(buffer_texrender, cx, cy)) {
+	gs_texrender_reset(filter->texrender_current_ptr);
+	if (gs_texrender_begin(filter->texrender_current_ptr, cx, cy)) {
 		struct vec4 background;
 		vec4_zero(&background);
 
@@ -156,31 +108,8 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 		obs_source_video_render(target);
 
 		gs_blend_state_pop();
-		gs_texrender_end(buffer_texrender);
+		gs_texrender_end(filter->texrender_current_ptr);
 	}
-	buffer_texrender = nullptr;
-}
-
-// Copies the one of the current buffers to the shared texture on the device
-static void copy(void *data)
-{
-	auto filter = (struct filter *)data;
-
-	return; // debug
-
-	if (!filter->texture_shared_ptr)
-		return;
-
-	gs_texture_t *source_texture = filter->render_swap
-					       ? filter->texture_current_ptr
-					       : filter->texture_previous_ptr;
-
-	gs_copy_texture(filter->texture_shared_ptr, source_texture);
-
-	source_texture = nullptr;
-
-	if (filter->render_flush)
-		gs_flush();
 }
 
 } // namespace Texture
@@ -206,41 +135,12 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	auto target_width = obs_source_get_base_width(target);
 	auto target_height = obs_source_get_base_height(target);
 
-	// Store a size changed state for later
-	auto size_changed = filter->texture_shared_width != target_width ||
-			    filter->texture_shared_height != target_height;
-
-	// update shared sizes if changed
-	if (filter->texture_shared_width != target_width) {
-		filter->texture_shared_width = target_width;
-	}
-	if (filter->texture_shared_height != target_height) {
-		filter->texture_shared_height = target_height;
-	}
-
 	// return if invalid dimensions
 	if (target_width == 0 || target_height == 0)
 		return;
 
-	// Check to see if we need to destroy the current texture
-	// This happens if the source texture size changes from above
-	if (size_changed && filter->texture_shared_ptr)
-		Texture::destroy(filter);
-
-	// create shared texture (if needed) and return
-	if (!filter->texture_shared_ptr) {
-		Texture::create(filter, target_width, target_height);
-		return;
-	}
-
 	// Render and copy the latest frame to our shared texture
 	Texture::render(filter, target, target_width, target_height);
-	Texture::copy(filter);
-
-	// Swap which internal texture to use next frame
-	// Not sure if any of this swapping texture stuff is really usefull or
-	// not
-	filter->render_swap = !filter->render_swap;
 }
 
 static void filter_update(void *data, obs_data_t *settings)
@@ -262,11 +162,6 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 	filter->context = source;
 
-	filter->render_flush = true;
-
-	filter->texrender_previous_ptr =
-		gs_texrender_create(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
-
 	filter->texrender_current_ptr =
 		gs_texrender_create2(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
 
@@ -285,20 +180,8 @@ static void filter_destroy(void *data)
 
 		obs_enter_graphics();
 
-		// de-reference some pointers
-		filter->texture_current_ptr = nullptr;
-		filter->texture_previous_ptr = nullptr;
-
 		gs_texrender_destroy(filter->texrender_current_ptr);
-		gs_texrender_destroy(filter->texrender_previous_ptr);
-
 		filter->texrender_current_ptr = nullptr;
-		filter->texrender_previous_ptr = nullptr;
-
-		if (filter->texture_shared_ptr) {
-			gs_texture_destroy(filter->texture_shared_ptr);
-			filter->texture_shared_ptr = nullptr;
-		}
 
 		obs_leave_graphics();
 		bfree(filter);

@@ -56,23 +56,17 @@ static void create(void *data, uint32_t cx, uint32_t cy);
 static void destroy(void *data);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
 static void get_shared_handle(void *data);
+
 } // namespace Texture
 
 struct filter {
 	obs_source_t *context;
 
 	gs_texrender_t *texrender_current_ptr;
-	gs_texrender_t *texrender_previous_ptr;
-
-	gs_texture_t *texture_shared_ptr;
 	gs_texture_t *texture_current_ptr;
-	gs_texture_t *texture_previous_ptr;
 
-	uint32_t texture_shared_width;
-	uint32_t texture_shared_height;
-
-	bool render_swap;
-	bool render_flush;
+	uint32_t texture_width;
+	uint32_t texture_height;
 };
 
 struct obs_source_info create_filter_info()
