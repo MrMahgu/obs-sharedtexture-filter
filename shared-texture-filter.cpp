@@ -4,6 +4,12 @@
 #include <string>
 #endif;
 
+// Until I figure something out, this lets me know that the plugin is using
+// some custom OBS changes
+
+// OBS has been customized to support shared texrender (well, just the textures)
+#define OBS_SHARED_TEXRENDER_PATCH
+
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(OBS_PLUGIN, OBS_PLUGIN_LANG)
 
@@ -77,6 +83,15 @@ static void debug_report_shared_handle(void *data)
 		  std::to_string(handle) + "\r\n\r\n\r\n";
 	blog(LOG_INFO, ws.c_str());
 }
+static void debug_report_shared_handle2(void *data)
+{
+	auto filter = (struct filter *)data;	
+	//texrender_current_ptr
+	auto handle = gs_texture_get_shared_handle(gs_texrender_get_texture(filter->texrender_current_ptr));
+	auto ws = "\r\n\r\n\r\n<<<===>>> POSSIBLE TEXTURE HANDLE : " +
+		  std::to_string(handle) + "\r\n\r\n\r\n";
+	blog(LOG_INFO, ws.c_str());
+}
 #endif
 
 // Creates (or replaces) the actual shared texture on the device
@@ -96,6 +111,11 @@ static void create(void *data, uint32_t cx, uint32_t cy)
 
 	Texrender::reset_textures(filter, cx, cy);
 	Texrender::update_pointers(filter);
+
+#ifdef DEBUG
+	debug_report_shared_handle2(filter);
+#endif
+
 }
 
 // Destroys the shared texture from the device
@@ -113,9 +133,12 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 	auto filter = (struct filter *)data;
 
 	// Choose which texrender to write to
+	/*
 	gs_texrender_t *buffer_texrender =
 		filter->render_swap ? filter->texrender_current_ptr
 				    : filter->texrender_previous_ptr;
+	*/
+	gs_texrender_t *buffer_texrender = filter->texrender_current_ptr;
 
 	// Render OBS source texture
 	gs_texrender_reset(buffer_texrender);
@@ -142,6 +165,8 @@ static void copy(void *data)
 {
 	auto filter = (struct filter *)data;
 
+	return; // debug
+
 	if (!filter->texture_shared_ptr)
 		return;
 
@@ -151,7 +176,7 @@ static void copy(void *data)
 
 	gs_copy_texture(filter->texture_shared_ptr, source_texture);
 
-	source_texture = nullptr;
+	source_texture = nullptr;	
 
 	if (filter->render_flush)
 		gs_flush();
@@ -241,7 +266,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 		gs_texrender_create(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
 
 	filter->texrender_current_ptr =
-		gs_texrender_create(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
+		gs_texrender_create2(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
 
 	// force an update
 	filter_update(filter, settings);
@@ -292,19 +317,18 @@ static void filter_video_render(void *data, gs_effect_t *effect)
 
 } // namespace SharedTexture
 
-#ifdef DEBUG
-static void debug_report_version()
-{
-	info("you can haz shared-texture tooz (Version: %s)",
-	     OBS_PLUGIN_VERSION_STRING);
-}
-#else
+
+// Writes a simple log entry to OBS
 static void report_version()
 {
+#ifdef DEBUG
+	info("you can haz shared-texture tooz (Version: %s)",
+	     OBS_PLUGIN_VERSION_STRING);
+#else
 	info("obs-sharedtexture-filter [mrmahgu] - version %s",
 	     OBS_PLUGIN_vERSION_STRING);
-}
 #endif
+}
 
 bool obs_module_load(void)
 {
@@ -312,11 +336,7 @@ bool obs_module_load(void)
 
 	obs_register_source(&filter_info);
 
-#ifdef DEBUG
-	debug_report_version();
-#else
 	report_version();
-#endif
 
 	return true;
 }
