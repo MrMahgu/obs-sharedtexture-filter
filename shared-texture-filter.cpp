@@ -53,13 +53,10 @@ static void reset_texture(void *data, uint32_t width, uint32_t height)
 		gs_texrender_end(filter->texrender_current_ptr);
 	}
 
+	filter->texture_current_ptr = nullptr;
 	filter->texture_current_ptr =
 		gs_texrender_get_texture(filter->texrender_current_ptr);
 }
-
-} // namespace Texrender
-
-namespace Texture {
 
 #ifdef DEBUG
 static void debug_report_shared_handle2(void *data)
@@ -75,18 +72,6 @@ static void debug_report_shared_handle2(void *data)
 	blog(LOG_INFO, ws.c_str());
 }
 #endif
-
-// Creates (or replaces) the actual shared texture on the device
-static void create(void *data, uint32_t cx, uint32_t cy)
-{
-	auto filter = (struct filter *)data;
-
-	Texrender::reset_texture(filter, cx, cy);
-
-#ifdef DEBUG
-	debug_report_shared_handle2(filter);
-#endif
-}
 
 // Renders the current OBS filter ?? to one of our buffer textures
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
@@ -112,7 +97,7 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 	}
 }
 
-} // namespace Texture
+} // namespace Texrender
 
 static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 {
@@ -145,7 +130,7 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 		Texrender::reset_texture(filter, cx, cy);
 
 	// Render and copy the latest frame to our shared texture
-	Texture::render(filter, target, target_width, target_height);
+	Texrender::render(filter, target, target_width, target_height);
 }
 
 static void filter_update(void *data, obs_data_t *settings)
@@ -165,8 +150,16 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 {
 	auto filter = (struct filter *)bzalloc(sizeof(SharedTexture::filter));
 
+	// Baseline everything
+	filter->texrender_current_ptr = nullptr;
+	filter->texture_current_ptr = nullptr;
+	filter->texture_height = 0;
+	filter->texture_width = 0;
+
+	// Setup the obs context
 	filter->context = source;
 
+	// Create our shared texture
 	filter->texrender_current_ptr =
 		gs_texrender_create2(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
 
@@ -186,9 +179,12 @@ static void filter_destroy(void *data)
 		obs_enter_graphics();
 
 		gs_texrender_destroy(filter->texrender_current_ptr);
+
 		filter->texrender_current_ptr = nullptr;
+		filter->texture_current_ptr = nullptr;
 
 		obs_leave_graphics();
+
 		bfree(filter);
 	}
 }
