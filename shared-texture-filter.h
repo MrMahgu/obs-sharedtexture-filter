@@ -47,12 +47,12 @@ static void filter_video_render(void *data, gs_effect_t *effect);
 
 // Shared texture stuff
 
-namespace Texrender {
+namespace Texture {
 
-static void reset_texture(void *data, uint32_t width, uint32_t height);
+static void reset(void *data, uint32_t width, uint32_t height);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
 
-} // namespace Texrender
+} // namespace Texture
 
 struct filter {
 	obs_source_t *context;
