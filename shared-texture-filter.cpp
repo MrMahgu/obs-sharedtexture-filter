@@ -48,8 +48,7 @@ static void debug_report_shared_handle2(void *data)
 {
 	auto filter = (struct filter *)data;
 
-	auto handle = gs_texture_get_shared_handle(
-		gs_texrender_get_texture(filter->texrender_current_ptr));
+	auto handle = gs_texture_get_shared_handle(filter->texture_current_ptr);
 
 	auto ws = "\r\n\r\n\r\n<<<===>>> POSSIBLE TEXTURE HANDLE : " +
 		  std::to_string(handle) + "\r\n\r\n\r\n";
@@ -65,9 +64,14 @@ static void reset_texture(void *data, uint32_t width, uint32_t height)
 	auto filter = (struct filter *)data;	
 
 	gs_texrender_reset(filter->texrender_current_ptr);
-	if (gs_texrender_begin(filter->texrender_current_ptr, width, height)) {
+	if (gs_texrender_begin2(filter->texrender_current_ptr, width, height)) {
 		gs_texrender_end(filter->texrender_current_ptr);
 	}
+}
+
+static void update_pointer(void* data)
+{
+	auto filter = (struct filter *)data;
 
 	filter->texture_current_ptr =
 		gs_texrender_get_texture(filter->texrender_current_ptr);
@@ -82,7 +86,7 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 
 	// Render OBS source texture
 	gs_texrender_reset(filter->texrender_current_ptr);
-	if (gs_texrender_begin(filter->texrender_current_ptr, cx, cy)) {
+	if (gs_texrender_begin2(filter->texrender_current_ptr, cx, cy)) {
 		struct vec4 background;
 		vec4_zero(&background);
 
@@ -122,16 +126,27 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	auto target_width = obs_source_get_base_width(target);
 	auto target_height = obs_source_get_base_height(target);
 
+	// Store a size changed state for later
+	auto size_changed = filter->texture_width != target_width ||
+			    filter->texture_height != target_height;
+
+	// update shared sizes if changed
+	if (filter->texture_width != target_width) {
+		filter->texture_width = target_width;
+	}
+	if (filter->texture_height != target_height) {
+		filter->texture_height = target_height;
+	}
+
 	// return if invalid dimensions
 	if (target_width == 0 || target_height == 0)
 		return;
 
 	// Check if size has changed and reset out textures/texture pointers
-	if (filter->texture_width != target_width ||
-	    filter->texture_height != target_height) {
-		filter->texture_width = target_width;
-		filter->texture_height = target_height;
-		Texrender::reset_texture(filter, cx, cy);
+	if (size_changed) {
+		Texrender::reset_texture(filter, target_width, target_height);
+		Texrender::update_pointer(filter);
+		return;
 	}
 
 	// Render and copy the latest frame to our shared texture
@@ -158,15 +173,15 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 	// Baseline everything
 	filter->texrender_current_ptr = nullptr;
 	filter->texture_current_ptr = nullptr;
-	filter->texture_height = 0;
 	filter->texture_width = 0;
+	filter->texture_height = 0;
 
 	// Setup the obs context
 	filter->context = source;
 
 	// Create our shared texture
 	filter->texrender_current_ptr =
-		gs_texrender_create2(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
+		gs_texrender_create(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
 
 	// force an update
 	filter_update(filter, settings);
@@ -183,11 +198,12 @@ static void filter_destroy(void *data)
 
 		obs_enter_graphics();
 
+		filter->texture_current_ptr = nullptr;
+
 		gs_texrender_destroy(filter->texrender_current_ptr);
 
 		filter->texrender_current_ptr = nullptr;
-		filter->texture_current_ptr = nullptr;
-
+		
 		obs_leave_graphics();
 
 		bfree(filter);
