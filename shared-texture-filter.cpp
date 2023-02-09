@@ -139,6 +139,11 @@ static void filter_render_callback(void *data, uint32_t cx, uint32_t cy)
 	if (target_width == 0 || target_height == 0)
 		return;
 
+	// Check if size has changed and reset out textures/texture pointers
+	if (filter->texture_width != target_width ||
+	    filter->texture_height != target_height)
+		Texrender::reset_texture(filter, cx, cy);
+
 	// Render and copy the latest frame to our shared texture
 	Texture::render(filter, target, target_width, target_height);
 }
