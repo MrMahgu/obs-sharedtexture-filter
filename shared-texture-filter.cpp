@@ -64,7 +64,7 @@ static void reset_texture(void *data, uint32_t width, uint32_t height)
 	auto filter = (struct filter *)data;	
 
 	gs_texrender_reset(filter->texrender_current_ptr);
-	if (gs_texrender_begin2(filter->texrender_current_ptr, width, height)) {
+	if (gs_texrender_begin(filter->texrender_current_ptr, width, height)) {
 		gs_texrender_end(filter->texrender_current_ptr);
 	}
 }
@@ -86,7 +86,7 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 
 	// Render OBS source texture
 	gs_texrender_reset(filter->texrender_current_ptr);
-	if (gs_texrender_begin2(filter->texrender_current_ptr, cx, cy)) {
+	if (gs_texrender_begin(filter->texrender_current_ptr, cx, cy)) {
 		struct vec4 background;
 		vec4_zero(&background);
 
@@ -181,7 +181,7 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 	// Create our shared texture
 	filter->texrender_current_ptr =
-		gs_texrender_create(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
+		gs_texrender_create2(OBS_PLUGIN_COLOR_SPACE, GS_ZS_NONE);
 
 	// force an update
 	filter_update(filter, settings);
