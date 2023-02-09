@@ -8,10 +8,12 @@ set(PROJECT_FULL_NAME "Shared texture filter")
 
 set(PLUGIN_AUTHOR "mahgu")
 
-target_sources(${PROJECT_NAME} PRIVATE
+target_sources(${PROJECT_NAME} PRIVATE  
+  shared-texture-filter.h
+  shared-memory.h
+  shared-memory.cpp
   shared-texture-filter.cpp
 )
-
 
 # Import libobs as main plugin dependency
 #find_package(libobs REQUIRED)
