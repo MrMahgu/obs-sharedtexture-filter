@@ -25,10 +25,12 @@
 #define info(format, ...) obs_log(LOG_INFO, format, ##__VA_ARGS__)
 #define debug(format, ...) obs_log(LOG_DEBUG, format, ##__VA_ARGS__)
 
+void report_version();
+
 bool obs_module_load(void);
 void obs_module_unload();
 
-static void debug_report_version();
+
 
 namespace SharedTexture {
 // OBS plugin stuff
@@ -46,16 +48,15 @@ static void filter_video_render(void *data, gs_effect_t *effect);
 // Shared texture stuff
 
 namespace Texrender {
-static void reset_textures(void *data, uint32_t width, uint32_t height);
-static void update_pointers(void *data);
+
+static void reset_texture(void *data, uint32_t width, uint32_t height);
+
 } // namespace Texrender
 
 namespace Texture {
-static void copy(void *data);
+
 static void create(void *data, uint32_t cx, uint32_t cy);
-static void destroy(void *data);
 static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy);
-static void get_shared_handle(void *data);
 
 } // namespace Texture
 

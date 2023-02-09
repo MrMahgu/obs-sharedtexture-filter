@@ -203,7 +203,7 @@ static void filter_video_render(void *data, gs_effect_t *effect)
 } // namespace SharedTexture
 
 // Writes a simple log entry to OBS
-static void report_version()
+void report_version()
 {
 #ifdef DEBUG
 	info("you can haz shared-texture tooz (Version: %s)",
