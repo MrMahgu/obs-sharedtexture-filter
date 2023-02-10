@@ -206,6 +206,12 @@ static void filter_destroy(void *data)
 
 		obs_enter_graphics();
 
+		gs_texture_destroy(filter->texture_buffer1);
+		gs_texture_destroy(filter->texture_buffer2);
+
+		filter->texture_buffer1 = nullptr;
+		filter->texture_buffer2 = nullptr;
+
 		gs_texture_destroy(filter->shared_texture);
 
 		filter->shared_texture = nullptr;
