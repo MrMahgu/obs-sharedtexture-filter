@@ -12,7 +12,7 @@
 #define OBS_PLUGIN_VERSION_RELEASE 1
 #define OBS_PLUGIN_VERSION_STRING "0.0.1"
 #define OBS_PLUGIN_LANG "en-US"
-#define OBS_PLUGIN_COLOR_SPACE GS_RGBA16
+#define OBS_PLUGIN_COLOR_SPACE GS_BGRA_UNORM
 
 #define OBS_UI_SETTING_FILTER_NAME "mahgu.sharedtexture.ui.filter_title"
 #define OBS_UI_SETTING_DESC_NAME "mahgu.sharedtexture.ui.name_desc"
@@ -64,7 +64,14 @@ struct filter {
 	enum gs_color_format shared_format;
 
 	gs_texture_t *prev_target;
+
 	gs_texture_t *shared_texture;
+
+	bool buffer_swap;
+
+	gs_texture_t *texture_buffer1;
+	gs_texture_t *texture_buffer2;
+
 };
 
 struct obs_source_info create_filter_info()
