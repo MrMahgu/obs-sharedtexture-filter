@@ -107,7 +107,6 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 	gs_set_viewport(0, 0, filter->width, filter->height);
 
 	struct vec4 background;
-
 	vec4_zero(&background);
 
 	gs_clear(GS_CLEAR_COLOR, &background, 0.0f, 0);
@@ -119,7 +118,6 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 	obs_source_video_render(target);
 
 	gs_blend_state_pop();
-
 	gs_set_render_target_with_color_space(filter->prev_target, NULL,
 					      filter->prev_space);
 
@@ -131,6 +129,9 @@ static void render(void *data, obs_source_t *target, uint32_t cx, uint32_t cy)
 	gs_copy_texture(filter->shared_texture,
 			!filter->buffer_swap ? filter->texture_buffer1
 					     : filter->texture_buffer2);
+
+	// Swap buffers
+	filter->buffer_swap = !filter->buffer_swap;
 }
 
 } // namespace Texture
@@ -182,8 +183,10 @@ static void *filter_create(obs_data_t *settings, obs_source_t *source)
 
 	// Baseline everything
 	filter->prev_target = nullptr;
+
 	filter->shared_texture = nullptr;
 	filter->shared_format = OBS_PLUGIN_COLOR_SPACE;
+
 	filter->width = 0;
 	filter->height = 0;
 	filter->buffer_swap = 0;
