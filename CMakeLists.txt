@@ -1,6 +1,13 @@
-cmake_minimum_required(VERSION 3.16...3.21)
+# --- Detect if the plugin is build out of tree or not ---
+if(CMAKE_PROJECT_NAME STREQUAL "obs-studio")
+  set(BUILD_OUT_OF_TREE OFF)
+  cmake_minimum_required(VERSION 3.21)
+else()
+  set(BUILD_OUT_OF_TREE ON)
+  cmake_minimum_required(VERSION 3.18)
+endif()
 
-project(shared-texture-filter VERSION 0.0.1)
+project(obs-sharedtexture-filter VERSION 0.0.1)
 
 add_library(${PROJECT_NAME} MODULE)
 
@@ -15,9 +22,14 @@ target_sources(${PROJECT_NAME} PRIVATE
   shared-texture-filter.cpp
 )
 
-# Import libobs as main plugin dependency
-#find_package(libobs REQUIRED)
-#include(cmake/ObsPluginHelpers.cmake)
+if(BUILD_OUT_OF_TREE)
+  # OBS
+  find_package(libobs REQUIRED)
+  include(cmake/ObsPluginHelpers.cmake)
+  # OBS Front-end
+  find_package(obs-frontend-api REQUIRED)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
+endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
@@ -31,8 +43,7 @@ find_qt(VERSION 6 COMPONENTS Widgets Core)
 target_link_libraries(${PROJECT_NAME} PRIVATE
   OBS::libobs
   Qt::Core
-  Qt::Widgets
-  OBS::frontend-api)
+  Qt::Widgets)
 
 set_target_properties(${project_name} PROPERTIES
     CXX_STANDARD 20
