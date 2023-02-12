@@ -17,7 +17,7 @@ on:
       - main
 
 env:
-  PLUGIN_NAME: 'obs-spout2-filter'
+  PLUGIN_NAME: 'obs-sharedtexture-filter'
 
 jobs:
   clang_check:
