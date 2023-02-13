@@ -1,10 +1,12 @@
 # --- Detect if the plugin is build out of tree or not ---
 if(CMAKE_PROJECT_NAME STREQUAL "obs-studio")
   set(BUILD_OUT_OF_TREE OFF)
+  set(OBS_FRONTEND OBS::frontend-api)
   cmake_minimum_required(VERSION 3.21)
 else()
   set(BUILD_OUT_OF_TREE ON)
   cmake_minimum_required(VERSION 3.18)
+  set(OBS_FRONTEND OBS::obs-frontend-api)
 endif()
 
 project(obs-sharedtexture-filter VERSION 0.0.1)
@@ -28,7 +30,6 @@ if(BUILD_OUT_OF_TREE)
   include(cmake/ObsPluginHelpers.cmake)
   # OBS Front-end
   find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -38,12 +39,15 @@ if(MSVC)
   target_link_libraries(${PROJECT_NAME} PRIVATE OBS::w32-pthreads)
 endif()
 
+#  Find Qt
 find_qt(VERSION 6 COMPONENTS Widgets Core)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   OBS::libobs
   Qt::Core
-  Qt::Widgets)
+  Qt::Widgets
+  ${OBS_FRONTEND})
+
 
 set_target_properties(${project_name} PROPERTIES
     CXX_STANDARD 20
