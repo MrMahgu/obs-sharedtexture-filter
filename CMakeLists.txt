@@ -49,7 +49,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   ${OBS_FRONTEND})
 
 
-set_target_properties(${project_name} PROPERTIES
+set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
